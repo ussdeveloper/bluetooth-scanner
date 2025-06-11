@@ -15,7 +15,7 @@ if exist "*.spec" del "*.spec"
 
 REM Build Windows executable
 echo 🏗️  Building Windows executable...
-pyinstaller --onefile ^
+python -m PyInstaller --onefile ^
     --name "bluetooth-scanner-windows" ^
     --add-data "README.md;." ^
     --hidden-import=bleak ^

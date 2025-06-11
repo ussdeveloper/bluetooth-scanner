@@ -15,7 +15,7 @@ rm -rf build/ dist/ *.spec
 
 # Build Windows executable
 echo "🏗️  Building Windows executable..."
-pyinstaller --onefile \
+python -m PyInstaller --onefile \
     --name "bluetooth-scanner-windows" \
     --icon=icon.ico \
     --add-data "README.md:." \
@@ -27,7 +27,7 @@ pyinstaller --onefile \
 
 # For Linux/macOS
 echo "🏗️  Building Linux executable..."
-pyinstaller --onefile \
+python -m PyInstaller --onefile \
     --name "bluetooth-scanner-linux" \
     --add-data "README.md:." \
     --hidden-import=bleak \
