@@ -471,7 +471,7 @@ async def main():
 
 def generate_pdf_report(devices, scan_time, duration):
     """
-    Generates PDF report with Bluetooth scan results in a condensed table format
+    Generates a comprehensive PDF report with enhanced layout and detailed statistics
     
     Args:
         devices (dict): Dictionary with devices {address: (device, advertisement_data)}
@@ -481,48 +481,134 @@ def generate_pdf_report(devices, scan_time, duration):
     Returns:
         str: Path to generated PDF file
     """
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    
     # Filename with date and time
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     filename = f"bluetooth_scan_report_{timestamp}.pdf"
     filepath = os.path.join(os.getcwd(), filename)
     
-    # Create PDF document
-    doc = SimpleDocTemplate(filepath, pagesize=A4)
+    # Create PDF document with landscape orientation for better table layout
+    doc = SimpleDocTemplate(filepath, pagesize=landscape(A4), 
+                          leftMargin=0.5*inch, rightMargin=0.5*inch,
+                          topMargin=0.5*inch, bottomMargin=0.5*inch)
     story = []
     styles = getSampleStyleSheet()
     
-    # Custom styles
+    # Enhanced custom styles
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
-        fontSize=20,
+        fontSize=18,
         spaceAfter=20,
         alignment=TA_CENTER,
-        textColor=colors.blue
+        textColor=colors.darkblue,
+        fontName='Helvetica-Bold'
     )
     
-    # Title
-    story.append(Paragraph("🔵 Bluetooth Device Scan Report", title_style))
-    story.append(Spacer(1, 15))
+    summary_style = ParagraphStyle(
+        'SummaryStyle',
+        parent=styles['Normal'],
+        fontSize=10,
+        spaceAfter=10,
+        alignment=TA_LEFT,
+        leftIndent=10
+    )
+      # Title
+    story.append(Paragraph("🔵 Professional Bluetooth Low Energy (BLE) Device Scan Report", title_style))
+    story.append(Spacer(1, 8))
     
-    # Scan information paragraph
+    # Enhanced scan summary with comprehensive statistics
+    device_count = len(devices)
+    manufacturers = {}
+    signal_strengths = {'Strong': 0, 'Medium': 0, 'Weak': 0, 'Very Weak': 0}
+    device_types = {}
+    total_services = 0
+    rssi_values = []
+    
+    # Calculate detailed statistics
+    for address, (device, adv_data) in devices.items():
+        # Count manufacturers
+        if adv_data.manufacturer_data:
+            for company_id in adv_data.manufacturer_data.keys():
+                company_name = get_company_name(company_id)
+                if "Unknown company" in company_name:
+                    company_name = f"Unknown (ID: {company_id})"
+                manufacturers[company_name] = manufacturers.get(company_name, 0) + 1
+        
+        # Count signal strengths and collect RSSI values
+        rssi = adv_data.rssi if hasattr(adv_data, 'rssi') and adv_data.rssi else device.rssi
+        if rssi:
+            rssi_values.append(rssi)
+            if rssi >= -50:
+                signal_strengths['Strong'] += 1
+            elif rssi >= -70:
+                signal_strengths['Medium'] += 1
+            elif rssi >= -90:
+                signal_strengths['Weak'] += 1
+            else:
+                signal_strengths['Very Weak'] += 1
+        
+        # Count device types
+        device_name = get_device_name(device, adv_data)
+        device_type = get_device_type(device_name, adv_data)
+        device_types[device_type] = device_types.get(device_type, 0) + 1
+        
+        # Count services
+        if adv_data.service_uuids:
+            total_services += len(adv_data.service_uuids)
+    
+    # Calculate RSSI statistics
+    avg_rssi = sum(rssi_values) / len(rssi_values) if rssi_values else 0
+    min_rssi = min(rssi_values) if rssi_values else 0
+    max_rssi = max(rssi_values) if rssi_values else 0
+      # Create comprehensive but compact summary
     scan_info_text = f"""
-    <b>Scan Date & Time:</b> {scan_time}<br/>
-    <b>Scan Duration:</b> {duration} seconds<br/>
-    <b>Devices Found:</b> {len(devices)}<br/>
-    <b>Scan Type:</b> Bluetooth Low Energy (BLE)
-    """
-    story.append(Paragraph(scan_info_text, styles['Normal']))
-    story.append(Spacer(1, 20))
+    <b>📅 Scan Information:</b> {scan_time} • Duration: {duration}s • BLE Protocol • Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}<br/><br/>
     
-    # Main condensed table with ALL data
-    if not devices:
-        story.append(Paragraph("No Bluetooth devices found.", styles['Normal']))
+    <b>📊 Discovery Results:</b> <b>{device_count}</b> devices found • <b>{total_services}</b> services • <b>{len(manufacturers)}</b> manufacturers • Avg: <b>{total_services/device_count:.1f}</b> services/device<br/><br/>
+    
+    <b>📶 Signal Distribution:</b> Strong: <b>{signal_strengths['Strong']}</b> ({signal_strengths['Strong']/device_count*100:.0f}%) • Medium: <b>{signal_strengths['Medium']}</b> ({signal_strengths['Medium']/device_count*100:.0f}%) • Weak: <b>{signal_strengths['Weak']}</b> ({signal_strengths['Weak']/device_count*100:.0f}%) • Very Weak: <b>{signal_strengths['Very Weak']}</b> ({signal_strengths['Very Weak']/device_count*100:.0f}%) • RSSI: {avg_rssi:.1f} dBm avg<br/><br/>
+    
+    <b>🏭 Top Manufacturers:</b> """
+    
+    # Add top manufacturers in compact format
+    if manufacturers:
+        top_manufacturers = sorted(manufacturers.items(), key=lambda x: x[1], reverse=True)[:3]
+        manufacturer_list = []
+        for manufacturer, count in top_manufacturers:
+            percentage = count/device_count*100
+            manufacturer_list.append(f"{manufacturer} ({count}, {percentage:.0f}%)")
+        scan_info_text += " • ".join(manufacturer_list)
     else:
-        # Table headers
+        scan_info_text += "No manufacturer data available"
+    
+    # Add device types in compact format
+    if device_types:
+        scan_info_text += "<br/><b>🔧 Device Types:</b> "
+        top_types = sorted(device_types.items(), key=lambda x: x[1], reverse=True)[:3]
+        type_list = []
+        for device_type, count in top_types:
+            percentage = count/device_count*100
+            type_list.append(f"{device_type} ({count}, {percentage:.0f}%)")
+        scan_info_text += " • ".join(type_list)
+    
+    story.append(Paragraph(scan_info_text, summary_style))
+    story.append(Spacer(1, 10))
+      # Enhanced comprehensive device table optimized for landscape
+    if not devices:
+        story.append(Paragraph("No Bluetooth devices found during the scan.", styles['Normal']))
+    else:
+        # Enhanced table headers with more detailed information
         headers = [
             '#', 'Device Name', 'MAC Address', 'RSSI\n(dBm)', 'Signal\nStrength', 
-            'Manufacturer', 'Company\nID', 'Services\nCount', 'Device Type', 'Main Services'
+            'Manufacturer', 'Company\nID', 'Services\nCount', 'Device Type', 
+            'Primary Services', 'Manufacturer\nData Size', 'Service\nData Size'
         ]
         
         table_data = [headers]
@@ -532,59 +618,72 @@ def generate_pdf_report(devices, scan_time, duration):
             rssi = adv_data.rssi if hasattr(adv_data, 'rssi') and adv_data.rssi else device.rssi
             rssi_str = str(rssi) if rssi else "N/A"
             
-            # Signal strength description (short)
+            # Enhanced signal strength description with visual indicators
             if rssi:
                 if rssi >= -50:
-                    signal_desc = "Strong"
+                    signal_desc = "📶📶📶 Strong"
                 elif rssi >= -70:
-                    signal_desc = "Medium"
+                    signal_desc = "📶📶 Medium"
                 elif rssi >= -90:
-                    signal_desc = "Weak"
+                    signal_desc = "📶 Weak"
                 else:
-                    signal_desc = "Very Weak"
+                    signal_desc = "📵 Very Weak"
             else:
-                signal_desc = "N/A"
+                signal_desc = "❓ N/A"
             
-            # Main manufacturer and company ID
+            # Enhanced manufacturer information
             main_manufacturer = "Unknown"
             company_id_str = "N/A"
+            manufacturer_data_size = 0
+            
             if adv_data.manufacturer_data:
                 first_company_id = list(adv_data.manufacturer_data.keys())[0]
                 company_id_str = str(first_company_id)
                 main_manufacturer = get_company_name(first_company_id)
                 if "Unknown company" in main_manufacturer:
-                    main_manufacturer = f"ID:{first_company_id}"
+                    main_manufacturer = f"Unknown (ID:{first_company_id})"
+                
+                # Calculate total manufacturer data size
+                manufacturer_data_size = sum(len(data) for data in adv_data.manufacturer_data.values())
             
-            # Services count
+            # Enhanced services information
             services_count = len(adv_data.service_uuids) if adv_data.service_uuids else 0
             
-            # Device type (shortened)
+            # Enhanced device type detection
             device_type = get_device_type(device_name, adv_data)
-            if len(device_type) > 15:
-                device_type = device_type[:12] + "..."
+            if len(device_type) > 18:
+                device_type = device_type[:15] + "..."
             
-            # Main services (top 2)
-            main_services = "None"
+            # Enhanced services list with more details
+            primary_services = "None"
             if adv_data.service_uuids:
                 service_names = []
-                for uuid in adv_data.service_uuids[:2]:
+                for uuid in adv_data.service_uuids[:3]:  # Show top 3 services
                     service_name = get_service_name(uuid)
                     if "Unknown service" not in service_name:
-                        service_names.append(service_name.split('(')[0].strip())
+                        short_name = service_name.split('(')[0].strip()
+                        if len(short_name) > 15:
+                            short_name = short_name[:12] + "..."
+                        service_names.append(short_name)
                     else:
-                        # Show short UUID for unknown services
+                        # Show shortened UUID for unknown services
                         short_uuid = str(uuid)[:8]
                         service_names.append(f"{short_uuid}...")
                 
                 if service_names:
-                    main_services = ", ".join(service_names)
-                    if len(adv_data.service_uuids) > 2:
-                        main_services += f" (+{len(adv_data.service_uuids)-2})"
+                    primary_services = ", ".join(service_names)
+                    if len(adv_data.service_uuids) > 3:
+                        primary_services += f" (+{len(adv_data.service_uuids)-3})"
             
-            # Truncate long names for table formatting
-            device_name_short = device_name[:18] + "..." if len(device_name) > 18 else device_name
-            main_manufacturer_short = main_manufacturer[:12] + "..." if len(main_manufacturer) > 12 else main_manufacturer
-            main_services_short = main_services[:25] + "..." if len(main_services) > 25 else main_services
+            # Service data size
+            service_data_size = 0
+            if adv_data.service_data:
+                service_data_size = sum(len(data) for data in adv_data.service_data.values())
+            
+            # Optimize text length for landscape table
+            device_name_short = device_name[:20] + "..." if len(device_name) > 20 else device_name
+            main_manufacturer_short = main_manufacturer[:15] + "..." if len(main_manufacturer) > 15 else main_manufacturer
+            primary_services_short = primary_services[:30] + "..." if len(primary_services) > 30 else primary_services
             
             row = [
                 str(i),
@@ -596,55 +695,66 @@ def generate_pdf_report(devices, scan_time, duration):
                 company_id_str,
                 str(services_count),
                 device_type,
-                main_services_short
+                primary_services_short,
+                f"{manufacturer_data_size} bytes" if manufacturer_data_size > 0 else "0",
+                f"{service_data_size} bytes" if service_data_size > 0 else "0"
             ]
             
             table_data.append(row)
-        
-        # Create table with optimized column widths for A4
-        col_widths = [0.3*inch, 1.2*inch, 1.0*inch, 0.5*inch, 0.6*inch, 
-                     0.8*inch, 0.4*inch, 0.4*inch, 0.8*inch, 1.5*inch]
+          # Enhanced table with optimized column widths for landscape A4
+        col_widths = [0.3*inch, 1.5*inch, 1.2*inch, 0.6*inch, 0.8*inch, 
+                     1.0*inch, 0.5*inch, 0.5*inch, 1.0*inch, 1.8*inch, 0.7*inch, 0.7*inch]
         
         main_table = Table(table_data, colWidths=col_widths, repeatRows=1)
         main_table.setStyle(TableStyle([
-            # Header styling
+            # Enhanced header styling
             ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 8),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
             
-            # Data styling
+            # Enhanced data styling with better readability
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 7),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightblue]),
             
-            # Borders and padding
+            # Enhanced borders and padding
             ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 3),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            
+            # Special formatting for signal strength column
+            ('ALIGN', (3, 0), (3, -1), 'CENTER'),  # RSSI column
+            ('ALIGN', (6, 0), (6, -1), 'CENTER'),  # Company ID column
+            ('ALIGN', (7, 0), (7, -1), 'CENTER'),  # Services count column
         ]))
         
         story.append(main_table)
     
-    # Footer
+    # Enhanced footer with technical information
     story.append(Spacer(1, 20))
-    story.append(Paragraph("=" * 80, styles['Normal']))
-    story.append(Paragraph(
-        f"Report generated by Bluetooth Scanner v2.0 | "
-        f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | "
-        f"System: Windows • Library: bleak", 
-        styles['Normal']
-    ))
+    story.append(Paragraph("=" * 120, styles['Normal']))
+    
+    footer_text = f"""
+    <b>🔧 Technical Report Information:</b><br/>
+    • Report generated by: Bluetooth Scanner v2.1 Professional Edition<br/>
+    • Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}<br/>
+    • System Platform: Windows • Bluetooth Library: bleak (Python)<br/>
+    • Report Format: PDF Landscape • Page Size: A4<br/>
+    • Scan Method: Bluetooth Low Energy (BLE) Advertisement Discovery<br/>
+    • Data Sources: Device advertisements, manufacturer data, service UUIDs, signal strength
+    """
+    
+    story.append(Paragraph(footer_text, styles['Normal']))
     
     # Build document
-    doc.build(story)
-    
+    doc.build(story)    
     return filepath
 
 if __name__ == "__main__":
-    # Uruchom asynchroniczną funkcję główną
+    # Run the main asynchronous function
     asyncio.run(main())
