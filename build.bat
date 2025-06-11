@@ -19,8 +19,29 @@ python -m PyInstaller --onefile ^
     --name "bluetooth-scanner-windows" ^
     --add-data "README.md;." ^
     --hidden-import=bleak ^
+    --hidden-import=bleak.backends ^
+    --hidden-import=bleak.backends.winrt ^
+    --hidden-import=bleak.backends.winrt.scanner ^
+    --hidden-import=bleak.backends.winrt.client ^
+    --hidden-import=bleak.backends.winrt.util ^
     --hidden-import=reportlab ^
+    --hidden-import=reportlab.lib ^
+    --hidden-import=reportlab.platypus ^
+    --hidden-import=reportlab.lib.pagesizes ^
     --hidden-import=asyncio ^
+    --hidden-import=winrt ^
+    --hidden-import=winrt.windows ^
+    --hidden-import=winrt.windows.foundation ^
+    --hidden-import=winrt.windows.foundation.collections ^
+    --hidden-import=winrt.windows.devices ^
+    --hidden-import=winrt.windows.devices.bluetooth ^
+    --hidden-import=winrt.windows.devices.bluetooth.advertisement ^
+    --hidden-import=winrt.windows.devices.bluetooth.genericattributeprofile ^
+    --hidden-import=winrt.windows.devices.enumeration ^
+    --hidden-import=winrt.windows.storage ^
+    --hidden-import=winrt.windows.storage.streams ^
+    --collect-all=bleak ^
+    --collect-all=winrt ^
     --console ^
     bluetooth_scanner.py
 
