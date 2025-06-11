@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2025-06-12
+
+### Fixed
+- **Test Suite Configuration** - Fixed pytest configuration with proper asyncio settings and function names
+- **Test Function Compatibility** - Updated test expectations to match actual function implementations
+- **Windows Build Verification** - Confirmed standalone executable works correctly with all dependencies
+
+### Added
+- **Simple Test Suite** - Added `test_simple.py` for quick function verification
+- **Build Verification** - Enhanced build process verification and testing
+
+### Changed
+- **Pytest Configuration** - Updated `pytest.ini` with proper asyncio mode and fixture scope settings
+
 ## [2.1.0] - 2025-06-12
 
 ### Added
