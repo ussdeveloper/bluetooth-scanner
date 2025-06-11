@@ -17,7 +17,7 @@ def read_requirements():
 
 setup(
     name="bluetooth-scanner",
-    version="1.0.0",
+    version="2.1.1",
     author="USS Developer",
     author_email="ussdeveloper@example.com",
     description="Professional Bluetooth Low Energy (BLE) scanner with PDF reporting",

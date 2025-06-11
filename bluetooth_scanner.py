@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Bluetooth Scanner - scans and displays list of all nearby Bluetooth devices
-Uses bleak library for Bluetooth Low Energy (BLE) device scanning
+Bluetooth Scanner - Professional BLE Device Discovery & PDF Reporting
+Version: 2.1.1
+Author: USS Developer
+Repository: https://github.com/ussdeveloper/bluetooth-scanner
+
+Professional Bluetooth Low Energy (BLE) scanner that discovers nearby devices 
+and generates comprehensive PDF reports with detailed statistics and analysis.
+Uses bleak library for cross-platform Bluetooth Low Energy device scanning.
 """
+
+__version__ = "2.1.1"
+__author__ = "USS Developer"
+__license__ = "MIT"
 
 import asyncio
 from bleak import BleakScanner, BleakClient
@@ -426,6 +436,7 @@ async def main():
     Main program function
     """
     print("🔵 Bluetooth Low Energy (BLE) Scanner")
+    print(f"🏷️  Version: {__version__}")
     scan_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print(f"📅 Date: {scan_time}")
     print("=" * 50)
